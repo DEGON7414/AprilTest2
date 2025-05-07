@@ -1,11 +1,17 @@
 package test;
 
+import org.apache.pdfbox.cos.COSDictionary;
+import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.multipdf.PDFCloneUtility;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import utils.*;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,7 +26,7 @@ public class ReceiptTest {
     public static void main(String[] args) {
         //來源檔案
 //        String filePath = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\考題.pdf";
-          String filePath = "C:\\Users\\cxhil\\Downloads\\test_商城_郵局_0531_0810.pdf";
+        String filePath = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\test_商城_郵局_0531_0810.pdf";
 
         //輸出檔案
         String outputFilePath = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\export_combined.pdf";
@@ -29,83 +35,105 @@ public class ReceiptTest {
         //外部參數 date
         String date = "2025年5月2日";
         //外部參數 貨號
-        String itemNumber = "BUIIJ10G 30D";
+        String itemNumber = "Mobifone07DU";
+        //外部參數 特別貨號
+        String specialNumber = "BUJ10G09D";
 
+        // 1. 提前旋轉圖片，僅執行一次
+        File picFile = new File(imagePath);
+        double degree = 270;
+        File rotatedImage = null;
         try {
-            //1.呼叫extractReceiptPages 抓取檔案中的每一頁
-            List<PDPage> pdPages = OrderUtils.extractReceiptPages(filePath);
-            //2.確保是偶數
-            if (pdPages.size() % 2 != 0) {
-                System.out.println("警告：PDF頁數不是偶數，最後一頁可能無法正確處理");
-            }
-            //3. 載入考題檔案
-            try (PDDocument sourceDocument = PDDocument.load(new File(filePath));
-            ) {//計算已處理的頁數
-                int processedCount = 0;
-                // 遍歷每兩頁一組
-                for (int i = 0; i < pdPages.size() - 1; i += 2) {
-                    //貨號判斷開關
-                    boolean isItemNumber = false;
-                    //統編判斷開關
-                    boolean isTaxId = false;
-                    //2. 從第二頁（表格頁）提取文本
-                    String tableText = PDFReaderUtils.extractTextFromPdf(sourceDocument, i + 2, i + 2); // 提取第二頁文本
+            rotatedImage = PicInsert.rotateImage(picFile, degree);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
-                    //3. 提取條碼編號
-                    String barcodeNumber = PDFReaderUtils.extractBarcodeNumber(tableText);
-                    System.out.println("條碼編號是: " + barcodeNumber);
+        // 2. 初始化最終輸出檔案
+        try (PDDocument finalDocument = new PDDocument()) {
+            // 分批處理，每批處理20頁
+            int batchSize = 20;
+            int processedCount = 0;
+            List<File> tempFiles = new ArrayList<>();
 
-                    //4. 提取實付金額
-                    String payment = PDFReaderUtils.paymentAmount(tableText);
-                    System.out.println("實付金額是: " + payment);
-
-                    //判斷貨號是否相同
-                    boolean itemNumberMatched = PDFReaderUtils.isItemNumberMatched(tableText, itemNumber);
-                    //判斷買家備註中有無統編相關備註
-                    boolean isBuyerNote = PDFReaderUtils.buyerNote(tableText);
-                    //貨號相同則不印收據 印字
-                    if (itemNumberMatched) {
-                        System.out.println("找到了");
-                        System.out.println("已處理 " + processedCount + " 筆資料");
-                        System.out.println("-----------------");
-                        isItemNumber = true;
-                        EasyTextAddUtils.addBill(sourceDocument, i + 1, isItemNumber);
-
-                        processedCount++;
-                    }
-                    //備註若有統編則不印收據 印字
-                    if (isBuyerNote) {
-                        System.out.println("有統編相關備註");
-                        System.out.println("已處理 " + processedCount + " 筆資料");
-                        System.out.println("-----------------");
-                        isTaxId = true;
-                        EasyTextAddUtils.addTaxId(sourceDocument, i + 1, isTaxId);
-                        processedCount++;
-
-                    }if(!isItemNumber && !isTaxId ){
-                        //5.寫入
-                        TextAppenderUtils.addText(sourceDocument, i + 1, date, barcodeNumber, payment);
-                        //6載入圖片並旋轉
-                        File picFile = new File(imagePath);
-                        double degree = 270;
-                        File rotatedImage = PicInsert.rotateImage(picFile, degree);
-
-                        // 接著插入圖片
-                        //選取頁數插入
-                        PDPage targetPage = sourceDocument.getPage(i + 1);
-                        PicInsert.insertPic(sourceDocument, targetPage, rotatedImage);
-                        processedCount++;
-                        System.out.println("已處理 " + processedCount + " 筆資料");
-                        System.out.println("-----------------");
-                    }
+            // 3. 逐頁處理
+            try (PDDocument sourceDocument = PDDocument.load(new File(filePath))) {
+                int totalPages = sourceDocument.getNumberOfPages();
+                // 確保頁數為偶數
+                if (totalPages % 2 != 0) {
+                    System.out.println("警告：PDF頁數不是偶數，最後一頁可能無法正確處理");
                 }
-                // 保存合併後的文檔
-                sourceDocument.save(outputFilePath);
-                System.out.println("已成功創建包含所有 " + processedCount + " 筆收據的PDF文件：" + outputFilePath);
+
+                for (int i = 0; i < totalPages - 1; i += 2) {
+                    //建立一個複製頁面 在此作操作 避免本來的檔案關閉
+                    try (PDDocument batchDocument = new PDDocument()) {
+
+                        PDPage page1 = sourceDocument.getPage(i);
+                        PDPage page2 = sourceDocument.getPage(i + 1);
+                        batchDocument.importPage(page1);
+                        batchDocument.importPage(page2);
+
+                        String tableText = PDFReaderUtils.extractTextFromPdf(batchDocument, 2, 2);
+                        String barcodeNumber = PDFReaderUtils.extractBarcodeNumber(tableText);
+                        String payment = PDFReaderUtils.paymentAmount(tableText);
+                        System.out.println("條碼編號是: " + barcodeNumber);
+                        System.out.println("實付金額是: " + payment);
+
+                        boolean isItemNumber = PDFReaderUtils.isItemNumberMatched(tableText, itemNumber);
+                        boolean isTaxId = PDFReaderUtils.buyerNote(tableText);
+                        boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(tableText, specialNumber);
+
+                        if (isItemNumber) {
+                            EasyTextAddUtils.addBill(batchDocument, 1, true);
+                        }
+                        if (isSpecialNumber) {
+                            EasyTextAddUtils.addBoth(batchDocument, 1, true);
+                        }
+
+                        if (isTaxId) {
+                            EasyTextAddUtils.addTaxId(batchDocument, 1, true);
+                        }
+
+                        if (!isItemNumber && !isTaxId && !isSpecialNumber) {
+                            TextAppenderUtils.addText(batchDocument, 1, date, barcodeNumber, payment);
+                            PDPage targetPage = batchDocument.getPage(1);
+                            PicInsert.insertPic(batchDocument, targetPage, rotatedImage);
+                        }
+
+                        // 儲存 temp PDF
+                        File tempFile = new File("temp_" + i + ".pdf");
+                        batchDocument.save(tempFile);
+                        tempFiles.add(tempFile);
+
+                        processedCount++;
+                        System.out.println("已處理 " + processedCount + " 筆資料");
+                    }
+
+                    // 主動觸發 GC
+                    System.gc();
+                }
+
+                // 合併所有 temp PDF
+                PDFMergerUtility merger = new PDFMergerUtility();
+                merger.setDestinationFileName(outputFilePath);
+                for (File tempFile : tempFiles) {
+                    merger.addSource(tempFile);
+                }
+                merger.mergeDocuments(MemoryUsageSetting.setupTempFileOnly());
+                System.out.println("已成功建立最終PDF，處理筆數：" + processedCount);
+            } catch (IOException e) {
+                throw new RuntimeException("處理PDF時發生錯誤: " + e.getMessage(), e);
+            }
+
+            // 刪除旋轉圖片
+            rotatedImage.delete();
+
+            // 刪除 temp 檔案
+            for (File temp : tempFiles) {
+                temp.delete();
             }
         } catch (IOException e) {
-            throw new RuntimeException("處理PDF時發生錯誤: " + e.getMessage(), e);
-
+            throw new RuntimeException(e);
         }
     }
 }

@@ -26,14 +26,16 @@ import static java.awt.SystemColor.text;
 public class PDFReaderUtils {
     //讀取PDF文本
     public static String extractTextFromPdf(PDDocument document, int startPage, int endPage) throws IOException {
+        StringBuilder text = new StringBuilder();
         PDFTextStripper pdfTextStripper = new PDFTextStripper();
-        pdfTextStripper.setStartPage(startPage);
-        pdfTextStripper.setEndPage(endPage);
-        String text1 = pdfTextStripper.getText(document);
-        System.gc();
-
-        return text1;
-
+        try {
+            pdfTextStripper.setStartPage(startPage);
+            pdfTextStripper.setEndPage(endPage);
+            text.append(pdfTextStripper.getText(document));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return text.toString();
     }
 
     //提取條碼下的編號
@@ -69,7 +71,8 @@ public class PDFReaderUtils {
         for (String line : lines) {
             //4.去除開頭結尾空白 並將多個空白(\\s)合併成一個 +是多個的意思
             line = line.trim().replaceAll("\\s+", " ");
-            // 5.匹配異字「金額」的金字 一個是正常金 一個是部首用的金
+            //金字可能會遇到 異字「金額」的金字 一個是正常金 一個是部首用的金
+            //因此這裡選擇用實付 作為判斷
             // 中文字沒有全形半形 英數字才有
             if ( line.contains("實付")) {
                 //6以:分割
@@ -171,6 +174,39 @@ public class PDFReaderUtils {
                     //檢查是否含有8位數
                     if (note.matches(".*\\b\\d{8}\\b.*")) {
                         return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    // 提取運送方式
+    // 辦別是不是郵局
+    public static boolean isPost (String text) throws IOException {
+        //1.檢查是否為空
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        //2.將整段文字按照行 分隔成陣列lines
+        String[] lines = text.split("\\r?\\n");
+        //3.一筆一筆取出
+        for (String line : lines) {
+            //4.去除開頭結尾空白 並將多個空白(\\s)合併成一個 +是多個的意思
+            line = line.trim().replaceAll("\\s+", " ");
+
+            if ( line.contains("運送方式")) {
+                //6以:分割
+                String[] parts = line.split("[：:]");
+                if (parts.length > 1) {
+                    //7.取出備註
+                    String note = parts[1].split(" ")[0].trim();
+                    //定義關鍵字
+                    String[] keywords = {"郵政", "郵局", "Post", "CHPYTWTP"};
+                    //檢查
+                    for (String keyword : keywords) {
+                        if (note.contains(keyword)) {
+                            return true;
+                        }
                     }
                 }
             }
