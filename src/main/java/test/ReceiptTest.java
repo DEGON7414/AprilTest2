@@ -63,7 +63,7 @@ public class ReceiptTest {
                 if (totalPages % 2 != 0) {
                     System.out.println("警告：PDF頁數不是偶數，最後一頁可能無法正確處理");
                 }
-
+                //FOR迴圈內不要new
                 for (int i = 0; i < totalPages - 1; i += 2) {
                     //建立一個複製頁面 在此作操作 避免本來的檔案關閉
                     try (PDDocument batchDocument = new PDDocument()) {
@@ -78,10 +78,10 @@ public class ReceiptTest {
                         String payment = PDFReaderUtils.paymentAmount(tableText);
                         System.out.println("條碼編號是: " + barcodeNumber);
                         System.out.println("實付金額是: " + payment);
-
-                        boolean isItemNumber = PDFReaderUtils.isItemNumberMatched(tableText, itemNumber);
+                        List<String> itemNumbers = PDFReaderUtils.extractItemNumber(tableText);
+                        boolean isItemNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, itemNumber);
                         boolean isTaxId = PDFReaderUtils.buyerNote(tableText);
-                        boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(tableText, specialNumber);
+                        boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, specialNumber);
 
                         if (isItemNumber) {
                             EasyTextAddUtils.addBill(batchDocument, 1, true);
@@ -109,10 +109,7 @@ public class ReceiptTest {
                         System.out.println("已處理 " + processedCount + " 筆資料");
                     }
 
-                    // 主動觸發 GC
-                    System.gc();
                 }
-
                 // 合併所有 temp PDF
                 PDFMergerUtility merger = new PDFMergerUtility();
                 merger.setDestinationFileName(outputFilePath);

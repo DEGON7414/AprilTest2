@@ -39,10 +39,6 @@ public class PDFReaderUtils {
     }
 
     //提取條碼下的編號
-    /*
-     * @param text 從PDF提取出來全部的文本
-     * @return 條碼編號
-     * */
     public static String extractBarcodeNumber(String text) throws IOException {
         //1.檢查提取的文本是否為空
         if (text == null || text.isEmpty()) {
@@ -85,12 +81,11 @@ public class PDFReaderUtils {
         }
         return null;
     }
-
     //提取貨號
-    public static boolean isItemNumberMatched(String text, String itemNumber) throws IOException {
+    public static List<String> extractItemNumber(String text) throws IOException {
         //1.檢查是否為空
         if (text == null || text.isEmpty()) {
-            return false;
+            return null;
         }
         String cleanedText = text.replaceAll("[\\n\\r]", " ") // 去掉換行符和回車符
                 .replaceAll("　", " ")  // 去掉全形空格
@@ -110,7 +105,7 @@ public class PDFReaderUtils {
             String secondPart = matcher.group(2);
             String fullItemNumber = firstPart + secondPart; // 完整貨號組合
             extractedItemNumbers.add(fullItemNumber); // 添加完整貨號
-            System.out.println("提取到的所有貨號: " + extractedItemNumbers);
+//            System.out.println("提取到的所有貨號: " + extractedItemNumbers);
 
         }
 
@@ -123,17 +118,31 @@ public class PDFReaderUtils {
             String secondPart1 = matcher1.group(2); // 例如：U
             String fullItemNumber1 = firstPart1 + secondPart1; // 完整貨號組合
             extractedItemNumbers.add(fullItemNumber1);
-            // 列印提取出的所有貨號
-            System.out.println("提取到的所有貨號: " + extractedItemNumbers);
+//            // 列印提取出的所有貨號
+//            System.out.println("提取到的所有貨號: " + extractedItemNumbers);
             if (!extractedItemNumbers.contains(fullItemNumber1)) {
                 extractedItemNumbers.add(fullItemNumber1);
             }
         }
+        //第三種模式
+        Pattern pattern3 = Pattern.compile("([A-Z0-9]+)[\\r\\n]+([A-Z0-9]+-[A-Z0-9]+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher3 = pattern3.matcher(text);
 
-
+        while (matcher3.find()) {
+            String firstPart3 = matcher3.group(1).toUpperCase();
+            String secondPart3 = matcher3.group(2).toUpperCase();
+            String fullItemNumber3 = firstPart3 + secondPart3;
+            if (!extractedItemNumbers.contains(fullItemNumber3)) {
+                extractedItemNumbers.add(fullItemNumber3);
+            }
+        }
+        return extractedItemNumbers;
+    }
+    //判斷貨號是否相符
+    public static boolean isItemNumberMatched(List<String> extractedItemNumbers,String itemNumber) throws IOException {
         // 檢查輸入的貨號是否在提取出的貨號中
         String input = itemNumber.replaceAll("\\s", "").toUpperCase(); // 清理空格並轉大寫
-        for (String extracted : extractedItemNumbers) {
+        for (Object extracted : extractedItemNumbers) {
             System.out.println("輸入的貨號: " + input);
             // 若有匹配，則返回 true
             if (extracted.equals(input)) {
@@ -181,11 +190,10 @@ public class PDFReaderUtils {
         return false;
     }
     // 提取運送方式
-    // 辦別是不是郵局
-    public static boolean isPost (String text) throws IOException {
+    public static String transportMethod(String text) throws IOException {
         //1.檢查是否為空
         if (text == null || text.isEmpty()) {
-            return false;
+            return null;
         }
         //2.將整段文字按照行 分隔成陣列lines
         String[] lines = text.split("\\r?\\n");
@@ -193,26 +201,30 @@ public class PDFReaderUtils {
         for (String line : lines) {
             //4.去除開頭結尾空白 並將多個空白(\\s)合併成一個 +是多個的意思
             line = line.trim().replaceAll("\\s+", " ");
-
-            if ( line.contains("運送方式")) {
-                //6以:分割
+            if (line.contains("運送方式")) {
                 String[] parts = line.split("[：:]");
                 if (parts.length > 1) {
-                    //7.取出備註
-                    String note = parts[1].split(" ")[0].trim();
-                    //定義關鍵字
-                    String[] keywords = {"郵政", "郵局", "Post", "CHPYTWTP"};
-                    //檢查
-                    for (String keyword : keywords) {
-                        if (note.contains(keyword)) {
-                            return true;
-                        }
-                    }
+                    return parts[1].trim();
                 }
             }
         }
-        return false;
+        return null;
     }
-}
+    // 辦別是不是郵局
+    public static boolean isPost (String transportMethod){
+        if (transportMethod == null || transportMethod.isEmpty()) {
+            return false;
+        }
+                String[] keywords = {"郵政", "郵局", "Post", "CHPYTWTP"};
+                for (String keyword : keywords) {
+                    if (transportMethod.contains(keyword)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+    }
+
 
 
