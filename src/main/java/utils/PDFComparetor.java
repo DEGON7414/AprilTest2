@@ -28,7 +28,7 @@ public class PDFComparetor {
     //判斷兩者是否相等
     public static  boolean comparePDF(String sourceFilePath, String newFilePath) throws IOException {
         int pageCount1=getPageCount(sourceFilePath);
-
-        return false;
+        int pageCount2=getPageCount(newFilePath);
+        return pageCount1 == pageCount2 ;
     }
 }

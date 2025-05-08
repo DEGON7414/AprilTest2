@@ -3,6 +3,7 @@ package test;
 import DTO.PageGroup;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import utils.PDFComparetor;
 import utils.PDFIOUtils;
 import utils.PDFReaderUtils;
 
@@ -40,7 +41,7 @@ public class NotPostTest {
         List<PageGroup> noTaxIdMorethan800 = new ArrayList<>();
         List<PageGroup> wantTaxIdlessthan800 = new ArrayList<>();
         List<PageGroup> wantTaxIdMorethan800 = new ArrayList<>();
-        try (PDDocument sourceDocument = PDDocument.load(new File(filePath));){
+        try (PDDocument sourceDocument = PDDocument.load(new File(filePath));) {
             int totalPages = sourceDocument.getNumberOfPages();
             for (int i = 0; i < totalPages - 1; i += 2) {
                 String tableText = PDFReaderUtils.extractTextFromPdf(sourceDocument, i + 1, i + 2);
@@ -114,6 +115,15 @@ public class NotPostTest {
             }
             //合併PDF
             PDFIOUtils.mergePDF(mergedFilePath, fileOutPath1, fileOutPath2, fileOutPath3, fileOutPath4);
+
+            boolean b = PDFComparetor.comparePDF(filePath, mergedFilePath);
+            if (b) {
+                System.out.println("兩者相同");
+            } else {
+                System.out.println("兩者不同");
+            }
+
+
         } catch (IOException e) {
             throw new RuntimeException("處理PDF時發生錯誤: " + e.getMessage(), e);
         }

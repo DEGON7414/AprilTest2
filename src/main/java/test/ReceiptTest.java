@@ -1,15 +1,12 @@
 package test;
 
-import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.io.MemoryUsageSetting;
-import org.apache.pdfbox.multipdf.PDFCloneUtility;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import utils.*;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +33,8 @@ public class ReceiptTest {
         String date = "2025年5月2日";
         //外部參數 貨號
         String itemNumber = "Mobifone07DU";
-        //外部參數 特別貨號
-        String specialNumber = "BUJ10G09D";
+        //外部參數 指定貨號
+        String markNumber = "BUJ10G09D";
 
         // 1. 提前旋轉圖片，僅執行一次
         File picFile = new File(imagePath);
@@ -81,7 +78,7 @@ public class ReceiptTest {
                         List<String> itemNumbers = PDFReaderUtils.extractItemNumber(tableText);
                         boolean isItemNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, itemNumber);
                         boolean isTaxId = PDFReaderUtils.buyerNote(tableText);
-                        boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, specialNumber);
+                        boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, markNumber);
 
                         if (isItemNumber) {
                             EasyTextAddUtils.addBill(batchDocument, 1, true);
