@@ -22,12 +22,12 @@ import java.util.List;
  */
 public class NotPostTest {
     public static void main(String[] args) {
-        //輸入檔案的路徑
+        //輸出檔案的路徑
         String fileOutPath1 = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\不用統編且小於800.pdf";
         String fileOutPath2 = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\不用統編且大於等於800.pdf";
         String fileOutPath3 = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\需用統編且小於800.pdf";
         String fileOutPath4 = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\需用統編且大於等於800.pdf";
-        //輸出檔案的路徑
+        //輸出合併檔案的路徑
         String mergedFilePath = "C:\\Users\\cxhil\\Desktop\\kevin0427考題\\合併結果.pdf";
 
         // 建立儲存已產生檔案路徑的列表

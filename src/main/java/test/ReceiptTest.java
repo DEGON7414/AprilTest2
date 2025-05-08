@@ -4,12 +4,17 @@ import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.text.PDFTextStripper;
 import utils.*;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ClassName: ReceiptTest
@@ -36,6 +41,9 @@ public class ReceiptTest {
         //外部參數 指定貨號
         String markNumber = "BUJ10G09D";
 
+        //指定字形
+        File font = new File("C:\\Users\\cxhil\\Downloads\\Fonts_Kai\\TW-Kai-98_1.ttf");
+
         // 1. 提前旋轉圖片，僅執行一次
         File picFile = new File(imagePath);
         double degree = 270;
@@ -45,89 +53,81 @@ public class ReceiptTest {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        // 初始化計數器
+        int processedCount = 0;
+        try (PDDocument sourceDocument = PDDocument.load(new File(filePath))) {
 
-        // 2. 初始化最終輸出檔案
-        try (PDDocument finalDocument = new PDDocument()) {
-            // 分批處理，每批處理20頁
-            int batchSize = 20;
-            int processedCount = 0;
-            List<File> tempFiles = new ArrayList<>();
-
-            // 3. 逐頁處理
-            try (PDDocument sourceDocument = PDDocument.load(new File(filePath))) {
-                int totalPages = sourceDocument.getNumberOfPages();
-                // 確保頁數為偶數
-                if (totalPages % 2 != 0) {
-                    System.out.println("警告：PDF頁數不是偶數，最後一頁可能無法正確處理");
-                }
-                //FOR迴圈內不要new
-                for (int i = 0; i < totalPages - 1; i += 2) {
-                    //建立一個複製頁面 在此作操作 避免本來的檔案關閉
-                    try (PDDocument batchDocument = new PDDocument()) {
-
-                        PDPage page1 = sourceDocument.getPage(i);
-                        PDPage page2 = sourceDocument.getPage(i + 1);
-                        batchDocument.importPage(page1);
-                        batchDocument.importPage(page2);
-
-                        String tableText = PDFReaderUtils.extractTextFromPdf(batchDocument, 2, 2);
-                        String barcodeNumber = PDFReaderUtils.extractBarcodeNumber(tableText);
-                        String payment = PDFReaderUtils.paymentAmount(tableText);
-                        System.out.println("條碼編號是: " + barcodeNumber);
-                        System.out.println("實付金額是: " + payment);
-                        List<String> itemNumbers = PDFReaderUtils.extractItemNumber(tableText);
-                        boolean isItemNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, itemNumber);
-                        boolean isTaxId = PDFReaderUtils.buyerNote(tableText);
-                        boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, markNumber);
-
-                        if (isItemNumber) {
-                            EasyTextAddUtils.addBill(batchDocument, 1, true);
-                        }
-                        if (isSpecialNumber) {
-                            EasyTextAddUtils.addBoth(batchDocument, 1, true);
-                        }
-
-                        if (isTaxId) {
-                            EasyTextAddUtils.addTaxId(batchDocument, 1, true);
-                        }
-
-                        if (!isItemNumber && !isTaxId && !isSpecialNumber) {
-                            TextAppenderUtils.addText(batchDocument, 1, date, barcodeNumber, payment);
-                            PDPage targetPage = batchDocument.getPage(1);
-                            PicInsert.insertPic(batchDocument, targetPage, rotatedImage);
-                        }
-
-                        // 儲存 temp PDF
-                        File tempFile = new File("temp_" + i + ".pdf");
-                        batchDocument.save(tempFile);
-                        tempFiles.add(tempFile);
-
-                        processedCount++;
-                        System.out.println("已處理 " + processedCount + " 筆資料");
-                    }
-
-                }
-                // 合併所有 temp PDF
-                PDFMergerUtility merger = new PDFMergerUtility();
-                merger.setDestinationFileName(outputFilePath);
-                for (File tempFile : tempFiles) {
-                    merger.addSource(tempFile);
-                }
-                merger.mergeDocuments(MemoryUsageSetting.setupTempFileOnly());
-                System.out.println("已成功建立最終PDF，處理筆數：" + processedCount);
-            } catch (IOException e) {
-                throw new RuntimeException("處理PDF時發生錯誤: " + e.getMessage(), e);
+            int totalPages = sourceDocument.getNumberOfPages();
+            if (totalPages % 2 != 0) {
+                System.out.println("警告：PDF頁數不是偶數，最後一頁可能無法正確處理");
             }
 
-            // 刪除旋轉圖片
-            rotatedImage.delete();
+            // 1. 提取所有偶數頁面的文本
+            Map<Integer, String> pageTexts = new HashMap<>();
+            PDFTextStripper pdfTextStripper = new PDFTextStripper();
+            PDType0Font pdffont = PDType0Font.load(sourceDocument, font);
 
-            // 刪除 temp 檔案
-            for (File temp : tempFiles) {
-                temp.delete();
+            // 只處理偶數頁（第2頁、第4頁...）
+            for (int pageNum = 2; pageNum <= totalPages; pageNum += 2) {
+                pdfTextStripper.setStartPage(pageNum);
+                pdfTextStripper.setEndPage(pageNum);
+                pageTexts.put(pageNum, pdfTextStripper.getText(sourceDocument));
+                System.out.println("已預處理 " + pageNum / 2 + " 頁");
             }
+
+            // 2. 逐頁處理資料(只處理奇數索引，對應偶數頁)
+            for (int i = 1; i < totalPages; i += 2) {
+                int pageNum = i + 1; // 實際頁碼
+                // 檢查頁碼是否有效
+                if (pageNum > totalPages) {
+                    break;
+                }
+                // 使用前面已提取的文本
+                String tableText = pageTexts.get(pageNum);
+                if (tableText == null) {
+                    System.out.println("警告：找不到頁面 " + pageNum + " 的文本內容");
+                    continue;
+                }
+                // 處理文本
+                String barcodeNumber = PDFReaderUtils.extractBarcodeNumber(tableText);
+                String payment = PDFReaderUtils.paymentAmount(tableText);
+                System.out.println("處理頁面 " + pageNum + " - 條碼編號: " + barcodeNumber + ", 實付金額: " + payment);
+
+                List<String> itemNumbers = PDFReaderUtils.extractItemNumber(tableText);
+                boolean isItemNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, itemNumber);
+                boolean isTaxId = PDFReaderUtils.buyerNote(tableText);
+                boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, markNumber);
+
+                // 根據條件處理頁面
+                if (isItemNumber) {
+                    EasyTextAddUtils.addBill(sourceDocument, i + 1, true);
+                }
+                if (isSpecialNumber) {
+                    EasyTextAddUtils.addBoth(sourceDocument, i + 1, true);
+                }
+                if (isTaxId) {
+                    EasyTextAddUtils.addTaxId(sourceDocument, i + 1, true);
+                }
+                if (!isItemNumber && !isTaxId && !isSpecialNumber) {
+                    TextAppenderUtils.addText(sourceDocument, i + 1, date, barcodeNumber, payment, pdffont);
+                    PDPage targetPage = sourceDocument.getPage(i);
+                    PicInsert.insertPic(sourceDocument, targetPage, rotatedImage);
+                }
+
+                processedCount++;
+                System.out.println("已處理 " + processedCount + " 組");
+            }
+            // 儲存處理後的文件
+            sourceDocument.save(outputFilePath);
+            System.out.println("處理完成，共處理 " + processedCount + " 筆資料");
+
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("處理PDF時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
         }
+
+        // 刪除旋轉圖片
+        rotatedImage.delete();
+
     }
 }

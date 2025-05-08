@@ -20,9 +20,13 @@ import java.io.IOException;
  * @Version 1.0
  */
 public class TextAppenderUtils {
-    public static boolean addText(PDDocument document, int pageIndex, String date, String number, String amount) {
+    public static boolean addText(PDDocument document, int pageIndex, String date, String number, String amount, PDType0Font pdffont ) {
         try {
             //===================== 1. 獲取 PDF 頁面相關資訊 =====================
+            if (pageIndex < 0 || pageIndex >= document.getNumberOfPages()) {
+                System.out.println("頁面索引超出範圍: " + pageIndex);
+                return false; // 返回 false，表示操作無效
+            }
             //1.獲取PDF頁面(pageIndex)
             PDPage page = document.getPage(pageIndex);
             //取的頁面的邊界
@@ -33,10 +37,10 @@ public class TextAppenderUtils {
 
             //===================== 2. 載入自定字型檔案 =====================
             //自定義字形
-            File file = new File("C:\\Users\\cxhil\\Downloads\\Fonts_Kai\\TW-Kai-98_1.ttf");
+//            File font = new File("C:\\Users\\cxhil\\Downloads\\Fonts_Kai\\TW-Kai-98_1.ttf");
 //            File file = new File("C:\\Windows\\Fonts\\kaiu.ttf");
             //PDType0Font載入指定字形 第一個參數是指定文件 第二個是字形路徑
-            PDType0Font font = PDType0Font.load(document, file);
+//            PDType0Font pdffont = PDType0Font.load(document, font);
 
             //===================== 3. 數字金額轉中文 =====================
             //金額轉成中文大寫 後面用到
@@ -60,7 +64,7 @@ public class TextAppenderUtils {
                 //===================== 5. 開始寫入文字 =====================
                 // 標題（旋轉 90 度）
                 contentStream.beginText();// 開始輸入文字模式
-                contentStream.setFont(font, 16);// 設定字型與字體大小
+                contentStream.setFont(pdffont, 16);// 設定字型與字體大小
 
                 // 設定旋轉角度與起始位置：90 度順時針旋轉，並指定旋轉中心座標 (x, y)
                 float rotateX = width - 245;  // 水平位置 越小越往左 越大越往右
@@ -76,7 +80,7 @@ public class TextAppenderUtils {
 
                 // 日期
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float rotateDateX = width - 233;  // 水平位置
                 float rotateDateY1 = height / 2 - 135;  // 垂直位置
                 Matrix rotateDate = Matrix.getRotateInstance(Math.toRadians(90), rotateDateX, rotateDateY1);
@@ -86,7 +90,7 @@ public class TextAppenderUtils {
 //
                 // 收據編號
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float rotateNumberX = width - 225;  // 水平位置
                 float rotateNumberY = height / 2 - 180;  // 垂直位置
                 Matrix rotateNumber = Matrix.getRotateInstance(Math.toRadians(90), rotateNumberX, rotateNumberY);
@@ -96,7 +100,7 @@ public class TextAppenderUtils {
 //
                 // 買受人
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float rotateBuyerX = width - 215;  // 水平位置
                 float rotateBuyerY = height / 2 - 180;  // 垂直位置
                 Matrix rotateBuyer = Matrix.getRotateInstance(Math.toRadians(90), rotateBuyerX, rotateBuyerY);
@@ -106,7 +110,7 @@ public class TextAppenderUtils {
 
                 // 統一編號
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float rotateTaxIdX = width - 205;  // 水平位置
                 float rotateTaxIdY = height / 2 - 180;  // 垂直位置
                 Matrix rotateTaxId = Matrix.getRotateInstance(Math.toRadians(90), rotateTaxIdX, rotateTaxIdY);
@@ -115,7 +119,7 @@ public class TextAppenderUtils {
                 contentStream.endText();
                 // 地址
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float rotateAddressX = width - 195;  // 水平位置
                 float rotateAddressY = height / 2 - 180;  // 垂直位置
                 Matrix rotateAddress = Matrix.getRotateInstance(Math.toRadians(90), rotateAddressX, rotateAddressY);
@@ -141,7 +145,7 @@ public class TextAppenderUtils {
 
                 // 品名
                 contentStream.beginText();
-                contentStream.setFont(font, 11);
+                contentStream.setFont(pdffont, 11);
                 float productX = width - 180;  // 水平位置
                 float productY = height / 2 - 180;  // 垂直位置
                 Matrix product = Matrix.getRotateInstance(Math.toRadians(90), productX, productY);
@@ -150,7 +154,7 @@ public class TextAppenderUtils {
                 contentStream.endText();
                 //金額
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float moneyX = width - 180;  // 水平位置
                 float moneyY = height / 2 - 55;  // 垂直位置
                 Matrix money = Matrix.getRotateInstance(Math.toRadians(90), moneyX, moneyY);
@@ -159,7 +163,7 @@ public class TextAppenderUtils {
                 contentStream.endText();
                 // 品名內容
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float productNameX = width - 170;  // 水平位置
                 float productNameY = height / 2 - 180;  // 垂直位置
                 Matrix productName = Matrix.getRotateInstance(Math.toRadians(90), productNameX, productNameY);
@@ -170,7 +174,7 @@ public class TextAppenderUtils {
                 // 金額內容
                 String amountText = amount;
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float moneyNumberX = width - 170;  // 水平位置
                 float moneyNumberY = height / 2 - 55;  // 垂直位置
                 Matrix moneyNumber = Matrix.getRotateInstance(Math.toRadians(90), moneyNumberX, moneyNumberY);
@@ -189,7 +193,7 @@ public class TextAppenderUtils {
 
                 // 中文大寫總額
                 contentStream.beginText();
-                contentStream.setFont(font, 9);
+                contentStream.setFont(pdffont, 9);
                 float chNumberX = width - 155;  // 水平位置
                 float chNumberY = height / 2 - 180;  // 垂直位置
                 Matrix chNumber = Matrix.getRotateInstance(Math.toRadians(90), chNumberX, chNumberY);
@@ -204,7 +208,7 @@ public class TextAppenderUtils {
                 String remark4 = "為申報和抵銷項稅額之憑證。";
                 //第一段
                 contentStream.beginText();
-                contentStream.setFont(font, 6);
+                contentStream.setFont(pdffont, 6);
                 float noteX = width - 145;  // 水平位置
                 float noteY = height / 2 - 180;  // 垂直位置
                 Matrix note = Matrix.getRotateInstance(Math.toRadians(90), noteX, noteY);
@@ -213,7 +217,7 @@ public class TextAppenderUtils {
                 contentStream.endText();
                 //第二段
                 contentStream.beginText();
-                contentStream.setFont(font, 6);
+                contentStream.setFont(pdffont, 6);
                 float noteX1 = width - 138;  // 水平位置
                 float noteY1 = height / 2 - 180;  // 垂直位置
                 Matrix note1 = Matrix.getRotateInstance(Math.toRadians(90), noteX1, noteY1);
@@ -222,7 +226,7 @@ public class TextAppenderUtils {
                 contentStream.endText();
                 //第三段
                 contentStream.beginText();
-                contentStream.setFont(font, 6);
+                contentStream.setFont(pdffont, 6);
                 float noteX2 = width - 131;  // 水平位置
                 float noteY2 = height / 2 - 180;  // 垂直位置
                 Matrix note2 = Matrix.getRotateInstance(Math.toRadians(90), noteX2, noteY2);
@@ -231,7 +235,7 @@ public class TextAppenderUtils {
                 contentStream.endText();
                 //第四段
                 contentStream.beginText();
-                contentStream.setFont(font, 6);
+                contentStream.setFont(pdffont, 6);
                 float noteX3 = width - 124;  // 水平位置
                 float noteY3 = height / 2 - 180;  // 垂直位置
                 Matrix note3 = Matrix.getRotateInstance(Math.toRadians(90), noteX3, noteY3);
