@@ -27,7 +27,6 @@ public class EasyTextAddUtils {
     public static boolean addTextIfNeeded(PDDocument document, int pageIndex, boolean condition, String text, float offsetY, PDType0Font font) throws IOException {
         //===================== 1. 獲取 PDF 頁面相關資訊 =====================
         try {
-
             if (pageIndex < 0 || pageIndex >= document.getNumberOfPages()) {
                 System.out.println("頁面索引超出範圍: " + pageIndex);
                 return false;
