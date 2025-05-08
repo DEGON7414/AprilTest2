@@ -5,6 +5,7 @@ import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import utils.*;
 
 import java.io.File;
@@ -102,15 +103,15 @@ public class FinalTest {
                         boolean isTaxId = PDFReaderUtils.buyerNote(tableText);
                         boolean isSpecialNumber = PDFReaderUtils.isItemNumberMatched(itemNumbers, markNumber);
 
-                        if (isItemNumber) {
-                            EasyTextAddUtils.addBill(batchDocument, 1, true);
-                        }
-                        if (isSpecialNumber) {
-                            EasyTextAddUtils.addBoth(batchDocument, 1, true);
-                        }
-                        if (isTaxId) {
-                            EasyTextAddUtils.addTaxId(batchDocument, 1, true);
-                        }
+//                        if (isItemNumber) {
+//                            EasyTextAddUtils.addBill(batchDocument, 1, true, font );
+//                        }
+//                        if (isSpecialNumber) {
+//                            EasyTextAddUtils.addBoth(batchDocument, 1, true,font);
+//                        }
+//                        if (isTaxId) {
+//                            EasyTextAddUtils.addTaxId(batchDocument, 1, true,font);
+//                        }
                         if (!isItemNumber && !isTaxId && !isSpecialNumber) {
 //                            TextAppenderUtils.addText(batchDocument, 1, date, barcodeNumber, payment,font);
                             PDPage targetPage = batchDocument.getPage(1);

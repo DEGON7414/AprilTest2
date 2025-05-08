@@ -56,34 +56,23 @@ public class ReceiptTest {
         // 初始化計數器
         int processedCount = 0;
         try (PDDocument sourceDocument = PDDocument.load(new File(filePath))) {
+            PDType0Font pdffont = PDType0Font.load(sourceDocument, font);
 
+            //提取文本
             int totalPages = sourceDocument.getNumberOfPages();
             if (totalPages % 2 != 0) {
                 System.out.println("警告：PDF頁數不是偶數，最後一頁可能無法正確處理");
             }
 
-            // 1. 提取所有偶數頁面的文本
-            Map<Integer, String> pageTexts = new HashMap<>();
-            PDFTextStripper pdfTextStripper = new PDFTextStripper();
-            PDType0Font pdffont = PDType0Font.load(sourceDocument, font);
-
-            // 只處理偶數頁（第2頁、第4頁...）
-            for (int pageNum = 2; pageNum <= totalPages; pageNum += 2) {
-                pdfTextStripper.setStartPage(pageNum);
-                pdfTextStripper.setEndPage(pageNum);
-                pageTexts.put(pageNum, pdfTextStripper.getText(sourceDocument));
-                System.out.println("已預處理 " + pageNum / 2 + " 頁");
-            }
-
             // 2. 逐頁處理資料(只處理奇數索引，對應偶數頁)
-            for (int i = 1; i < totalPages; i += 2) {
+            for (int i = 0; i < totalPages; i += 2) {
+                //提取文本
+                String tableText = PDFReaderUtils.extractTextFromPdf(sourceDocument, i+1, i+2);
                 int pageNum = i + 1; // 實際頁碼
                 // 檢查頁碼是否有效
                 if (pageNum > totalPages) {
                     break;
                 }
-                // 使用前面已提取的文本
-                String tableText = pageTexts.get(pageNum);
                 if (tableText == null) {
                     System.out.println("警告：找不到頁面 " + pageNum + " 的文本內容");
                     continue;
@@ -100,17 +89,17 @@ public class ReceiptTest {
 
                 // 根據條件處理頁面
                 if (isItemNumber) {
-                    EasyTextAddUtils.addBill(sourceDocument, i + 1, true);
+                    EasyTextAddUtils.addBill(sourceDocument, i + 1, true,pdffont);
                 }
                 if (isSpecialNumber) {
-                    EasyTextAddUtils.addBoth(sourceDocument, i + 1, true);
+                    EasyTextAddUtils.addBoth(sourceDocument, i + 1, true,pdffont);
                 }
                 if (isTaxId) {
-                    EasyTextAddUtils.addTaxId(sourceDocument, i + 1, true);
+                    EasyTextAddUtils.addTaxId(sourceDocument, i + 1, true,pdffont);
                 }
                 if (!isItemNumber && !isTaxId && !isSpecialNumber) {
                     TextAppenderUtils.addText(sourceDocument, i + 1, date, barcodeNumber, payment, pdffont);
-                    PDPage targetPage = sourceDocument.getPage(i);
+                    PDPage targetPage = sourceDocument.getPage(i+1);
                     PicInsert.insertPic(sourceDocument, targetPage, rotatedImage);
                 }
 
